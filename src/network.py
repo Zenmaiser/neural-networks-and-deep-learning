@@ -12,6 +12,7 @@ and omits many desirable features.
 #### Libraries
 # Standard library
 import random
+import mnist_loader
 
 # Third-party libraries
 import numpy as np
@@ -71,12 +72,15 @@ class Network(object):
         gradient descent using backpropagation to a single mini batch.
         The ``mini_batch`` is a list of tuples ``(x, y)``, and ``eta``
         is the learning rate."""
+        """maybe x represents activations list of (784) and y represents the final result?"""
         nabla_b = [np.zeros(b.shape) for b in self.biases]
         nabla_w = [np.zeros(w.shape) for w in self.weights]
-        for x, y in mini_batch:
-            delta_nabla_b, delta_nabla_w = self.backprop(x, y)
-            nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
-            nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
+        
+        x, y = zip(*mini_batch) # x is all the input activations
+        x = np.hstack(x)
+        y = np.hstack(y)
+        nabla_b, nabla_w = self.backprop(x, y) # overall change in all the weights
+        
         self.weights = [w-(eta/len(mini_batch))*nw
                         for w, nw in zip(self.weights, nabla_w)]
         self.biases = [b-(eta/len(mini_batch))*nb
@@ -101,7 +105,7 @@ class Network(object):
         # backward pass
         delta = self.cost_derivative(activations[-1], y) * \
             sigmoid_prime(zs[-1])
-        nabla_b[-1] = delta
+        nabla_b[-1] = np.sum(delta, axis=1, keepdims = True)
         nabla_w[-1] = np.dot(delta, activations[-2].transpose())
         # Note that the variable l in the loop below is used a little
         # differently to the notation in Chapter 2 of the book.  Here,
@@ -113,8 +117,9 @@ class Network(object):
             z = zs[-l]
             sp = sigmoid_prime(z)
             delta = np.dot(self.weights[-l+1].transpose(), delta) * sp
-            nabla_b[-l] = delta
+            nabla_b[-l] = np.sum(delta, axis=1, keepdims=True)
             nabla_w[-l] = np.dot(delta, activations[-l-1].transpose())
+            # nabla_b is now vector re
         return (nabla_b, nabla_w)
 
     def evaluate(self, test_data):
@@ -139,3 +144,8 @@ def sigmoid(z):
 def sigmoid_prime(z):
     """Derivative of the sigmoid function."""
     return sigmoid(z)*(1-sigmoid(z))
+
+if __name__ == "__main__":
+    firstNetwork = Network([784, 30, 10]);
+    training_data, validation_data, test_data = mnist_loader.load_data_wrapper()
+    firstNetwork.SGD(training_data, 30, 10, 3.0, test_data=test_data)
